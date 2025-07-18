@@ -1,0 +1,163 @@
+spring:
+  application:
+    name: component-reservation-shred
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/component_reservation_db
+    username: ${DB_USERNAME:reservation_user}
+    password: ${DB_PASSWORD:reservation_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      pool-name: ComponentReservationPool
+  
+  # JPA/Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.SnakeCasePhysicalNamingStrategy
+    show-sql: false
+    properties:
+      hibernate:
+        # Dialect will be auto-detected by Hibernate based on the datasource driver
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+  
+  # ActiveMQ Configuration
+  activemq:
+    broker-url: tcp://localhost:61616
+    user: ${JMS_USERNAME:admin}
+    password: ${JMS_PASSWORD:admin}
+    pool:
+      enabled: true
+      max-connections: 10
+      idle-timeout: 30000
+    packages:
+      trust-all: false
+      trusted: ai.shreds
+  
+  # JMS Configuration
+  jms:
+    pub-sub-domain: true
+    template:
+      default-destination: inventory.reservations
+      delivery-mode: persistent
+      priority: 4
+      time-to-live: 3600000
+      receive-timeout: 10000
+  
+  # Security Configuration
+  security:
+    user:
+      name: ${SECURITY_USER:admin}
+      password: ${SECURITY_PASSWORD:admin123}
+      roles: ADMIN
+  
+  # Scheduling Configuration
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: reservation-scheduler-
+    execution:
+      pool:
+        core-size: 10
+        max-size: 20
+        queue-capacity: 100
+        keep-alive: 60s
+      thread-name-prefix: reservation-executor-
+
+  # Jackson Configuration
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: false
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    time-zone: UTC
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+  
+# Management/Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+    info:
+      enabled: true
+  info:
+    app:
+      name: ${spring.application.name}
+      version: 1.0.0
+      description: Component Reservation Management Shred
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    ai.shreds: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.jms: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/component-reservation.log
+    max-size: 10MB
+    max-history: 30
+
+# Application-specific Configuration
+reservation:
+  expiration:
+    # Cron expression to run every 5 minutes
+    cron: "0 */5 * * * *"
+    batch-size: 100
+    processing-delay: 5000
+  
+  topics:
+    reservation-created: "inventory.reservations.created"
+    reservation-expired: "inventory.reservations.expired"
+    reservation-consumed: "inventory.reservations.consumed"
+    reservation-cancelled: "inventory.reservations.cancelled"
+    stock-level-updated: "inventory.stock.updated"
+  
+  validation:
+    max-expiration-days: 30
+    min-quantity: 0.0001
+    max-quantity: 999999.9999
+  
+  database:
+    lock-timeout: 30000
+    retry-attempts: 3
+    retry-delay: 1000
+
+# Transaction Configuration
+transaction:
+  default-timeout: 30
+  rollback-on-commit-failure: true
